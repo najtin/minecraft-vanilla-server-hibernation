@@ -1,0 +1,9 @@
+commandLineStartCommand = java -jar server.jar
+serverStopCommand = stop
+address = 127.0.1.1
+port = 25565
+emptyServerTimeout = 10
+shutdownTimeout = 10
+serverReadyRegex = .*Done.*
+playerJoinRegex = .*joined.*
+playerLeaveRegex = .*disconnected.*
