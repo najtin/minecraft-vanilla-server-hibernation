@@ -1,22 +1,20 @@
 # minecraft-server-hibernation
-forked from [gekigek99](https://github.com/gekigek99/minecraft-vanilla-server-hibernation)
-which is derived from [supernifty](https://github.com/supernifty/port-forwarder)
+forked from [gekigek99](https://github.com/gekigek99/minecraft-vanilla-server-hibernation) but has been completly rewritten in java since
 
-This is a simple Python script to start a minecraft server on request and stop it when there are no player online.
-How to use:
-1. Install and run your desiered minecraft server.
-2. Rename the minecraft-server-jar to 'minecraft_server.jar'
-3. Change the port in 'server.properties' to 25555
-4. Edited the paramters in the script as needed. 
-5. run the script
+This Java-Project lets you run your minecraft server on demand with almost no overhead! If no players are online for a prolonged period of time the server will be shutdown. When a player connects to your server, the server will be started. 
 
-**IMPORTANT**	
-If you are the first to access to minecraft world you will *have to wait 120 seconds*.
-```Python
-MINECRAFT_SERVER_STARTUPTIME = 120 
-```
-After 120 seconds you have 240 to connect to the server before it is shutdown. 
-```Python
-TIME_BEFORE_STOPPING_EMPTY_SERVER = 240
-```
-You can change these parameters to fit your needs.
+## First steps:
+1. You can either build the project yourself or download the precompiled jar.
+2. Put the jar in your minecraft-server folder.
+3. On the first start it will generate a config.txt. Run the hibernate-jar. 
+4. Customize it to your needs. 
+
+Now you can run you mincraft server on demand by running the hibernate-jar just like you would your `server.jar`. 
+
+Notice, that it also creates a new folder `hibernate-logs`. Inside you find the logs of the hibernation-jar.
+
+## How is this different from the project of [gekigek99](https://github.com/gekigek99/minecraft-vanilla-server-hibernation)?
+- no overhead for a proxy, since there is no proxy
+- no need for any other software, only java
+- nice logging
+- monitoring via http
