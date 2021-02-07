@@ -1,0 +1,11 @@
+commandLineStartCommand = java -jar server.jar
+serverStopCommand = stop
+address = 192.168.202.40
+port = 25565
+emptyServerTimeout = 240
+shutdownTimeout = 30
+serverReadyRegex = \[[0-9]{2}:[0-9]{2}:[0-9]{2}\][^:]*: Done \([0-9]+\.[0-9]+s\)! For help, type "help"
+playerJoinRegex = \[[0-9]{2}:[0-9]{2}:[0-9]{2}\][^:]*: [A-Za-z0-9]+ joined the game
+playerLeaveRegex = \[[0-9]{2}:[0-9]{2}:[0-9]{2}\][^:]*: [A-Za-z0-9]+ left the game
+monitorAddress = 127.0.0.1
+monitorPort = 8080

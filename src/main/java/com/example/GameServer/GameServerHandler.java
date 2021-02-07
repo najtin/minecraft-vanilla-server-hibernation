@@ -1,113 +1,98 @@
-package com.example;
+package com.example.GameServer;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+
+import com.example.Main.Configuration;
+import com.example.Main.ServerStatus;
 
 
 public class GameServerHandler implements Closeable, AutoCloseable {
 
-	final private BufferedReader input;
-	final private BufferedWriter output;
 	final private Process process;
-	final private ExecutorService service = Executors.newSingleThreadExecutor();
-	private final Thread ioThread;
+	private final InputBridge terminalInputBridge;
+	private final InputBridge serverInputBridge;
+	private final ServerStatus serverStatus;
+	private final Thread shutdownHock;
 	final private Configuration config;
 	
-	private int playerCount = 0;
 	
-	public GameServerHandler(Configuration config) throws IOException {
+	public GameServerHandler(Configuration config, ServerStatus serverStatus) throws IOException {
 		this.config = config;
+		
+		this.serverStatus = serverStatus;
+		
 		ProcessBuilder ps = new ProcessBuilder(chunkCommand(config.commandLineStartCommand));
 		ps.redirectErrorStream(true);
 
 		process = ps.start();  
+		this.serverStatus.setState(ServerStatus.States.starting);
 
-		input = new BufferedReader(new InputStreamReader(process.getInputStream()));
-		output = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
 		
-
-
-		ioThread = new Thread(() -> {
-			System.out.println("Start passing input from stdin to GameServer");
-			try {
-				BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
-				String line = "";
-				while(true) {
-					if(!in.ready()) {Thread.sleep(30); continue;}
-					int i =  in.read();
-					if(i==-1) break;
-					char c = (char) i;
-					if(c!='\n') {line+=c; continue;}
-					output.write(line);
-					output.newLine();
-					output.flush();
-					line = "";
-				}
-			} catch (Throwable e) {}
-			System.out.println("Stop passing input from stdin to GameServer");
+		terminalInputBridge = new InputBridge(System.in, process.getOutputStream());
+		terminalInputBridge.start();
+		
+		serverInputBridge = new InputBridge(process.getInputStream(), System.out);
+		serverInputBridge.setOnNewLine((line) -> {
+			if (config.serverReadyRegex.matcher(line).matches()) 
+				serverStatus.setState(ServerStatus.States.online);
 		});
-		ioThread.start();
+		serverInputBridge.start();
 		
-		String line;
-		while ((line=input.readLine())!=null) {
-			System.out.println(line);
-			if (config.serverReadyRegex.matcher(line).matches()) break;
+		while(true) {
+			try {
+				Thread.sleep(3000);
+			} catch (InterruptedException e) {
+				throw new RuntimeException(e);
+			}
+			if(serverStatus.getState() == ServerStatus.States.online) break;
 		}
+		
+		serverInputBridge.setOnNewLine((line) -> {
+			if (config.playerJoinRegex.matcher(line).matches()) 
+				serverStatus.incrementPlayerCount();
+			else if (config.playerLeaveRegex.matcher(line).matches()) 
+				serverStatus.dencrementPlayerCount();
+		});
+		
+		shutdownHock = new Thread(()-> this.closeWithoutRemovingHook());
+		Runtime.getRuntime().addShutdownHook(shutdownHock);
 	}
 	
-	public synchronized void waitTillEmptyOrTimeout() throws ExecutionException, InterruptedException {
-    	long lastPlayerSeenAt = System.currentTimeMillis();
+	public void waitTillEmptyOrTimeout() throws ExecutionException {
 		while(true) {
-			String line;
 			try {
-				line = readLine();
-				System.out.println(line);
-			} catch (TimeoutException e) {
-				line = "";
+				Thread.sleep(3000);
+			} catch (InterruptedException e) {
+				throw new RuntimeException(e);
 			}
-        	if(config.playerJoinRegex.matcher(line).matches()) {
-        		playerCount++;
-        		lastPlayerSeenAt = System.currentTimeMillis();
-        	} else if(config.playerLeaveRegex.matcher(line).matches()) {
-        		playerCount--;
-        		lastPlayerSeenAt = System.currentTimeMillis();
-        	} else {
-        		if(playerCount == 0 && lastPlayerSeenAt+1000*config.emptyServerTimeout<System.currentTimeMillis())
-        			break;
-        	}
+			//here we might lose an update (race condition) but it shouldn't matter in practice
+			//since then the lastChange case will probably hit in this case
+			if(!process.isAlive()) throw new ExecutionException(new RuntimeException("process died unexpectidly"));
+			if(serverStatus.getPlayerCount() != 0) continue;
+			if(System.currentTimeMillis()<serverStatus.getLastChange()+1000*config.emptyServerTimeout) continue;
+			//if a player joins after this check, well, thats simply bad luck
+			
+			break;
 		}
     }
 	
-	private String readLine() throws ExecutionException, InterruptedException, TimeoutException {
-    	final Future<Object> futureLine = service.submit(() -> input.readLine());
-    	String line = "";
-    	line = (String) futureLine.get(config.emptyServerTimeout, TimeUnit.SECONDS);
-    	if (line == null) throw new ExecutionException(
-    			"Program unexpectidly stopped execution.",
-    			new RuntimeException("unkown cause"));
-    	return line;
-	}
-	
 	@Override
 	public void close() throws IOException {
-		ioThread.interrupt();
-        service.shutdown();
+		closeWithoutRemovingHook();
+		Runtime.getRuntime().removeShutdownHook(shutdownHock);
+	}
+	
+	private void closeWithoutRemovingHook() {
         if(!process.isAlive()) return;
-		output.write(config.serverStopCommand);
-		output.newLine();
-		output.flush();
+        terminalInputBridge.ingestLine(config.serverStopCommand);
+		
+		serverInputBridge.terminate();
+		terminalInputBridge.terminate();
 		try {
 			process.waitFor(config.shutdownTimeout, TimeUnit.SECONDS);
 			process.destroy();
@@ -131,4 +116,5 @@ public class GameServerHandler implements Closeable, AutoCloseable {
 		result.add(input.substring(start));
 		return result.toArray(String[]::new);
 	}
+	
 }
