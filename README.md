@@ -1,5 +1,5 @@
 # minecraft-server-hibernation
-inspired by [gekigek99](https://github.com/gekigek99/minecraft-vanilla-server-hibernation) 
+forked from [gekigek99](https://github.com/gekigek99/minecraft-vanilla-server-hibernation) but has been completly rewritten in java since
 
 This Java-Project lets you run your minecraft server on demand with almost no overhead! If no players are online for a prolonged period of time the server will be shutdown. When a player connects to your server, the server will be started. 
 
