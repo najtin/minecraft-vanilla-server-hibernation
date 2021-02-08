@@ -77,23 +77,29 @@ public class SleepCycle {
 	
 		
     private void waitForPoke() throws IOException {
-    	ServerSocket server = new ServerSocket(config.port, 1, config.address);
-    	Socket client = server.accept();
-    	
-    	byte[] bytes = ("{\"text\":\""+"You just poked me! Server will be up soon."+"\"}").getBytes();
-    	OutputStream out = client.getOutputStream();
-    	// two bytes length of entire stream
-    	out.write((byte) (bytes.length%128 + 128 + 3));
-    	out.write((byte) (bytes.length/128));
-    	// one 0
-    	out.write(0);
-    	// two bytes length of message
-    	out.write((byte) (bytes.length%128 + 128));
-    	out.write((byte) (bytes.length/128));
-    	out.write(bytes);
-    	out.flush();
-    	
-    	client.close();
-    	server.close();
+		ServerSocket server = new ServerSocket(config.port, 1, config.address);
+		Socket client = server.accept();
+    	while(true) {
+    		try {
+    			byte[] bytes = ("{\"text\":\""+"You just poked me! Server will be up soon."+"\"}").getBytes();
+    			OutputStream out = client.getOutputStream();
+				// two bytes length of entire stream
+				out.write((byte) (bytes.length%128 + 128 + 3));
+				out.write((byte) (bytes.length/128));
+				// one 0
+				out.write(0);
+				// two bytes length of message
+				out.write((byte) (bytes.length%128 + 128));
+				out.write((byte) (bytes.length/128));
+				out.write(bytes);
+				out.flush();
+				
+				client.close();
+				server.close();
+				break;
+    		} catch(IOException e) {
+    			Logger.logLineAndPrint("waitForPoke: Error in communication with client:"+e.getMessage());
+    		}
+    	}
     }
 }
