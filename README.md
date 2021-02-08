@@ -16,5 +16,4 @@ Notice, that it also creates a new folder `hibernate-logs`. Inside you find the 
 ## How is this different from the project of [gekigek99](https://github.com/gekigek99/minecraft-vanilla-server-hibernation)?
 - no overhead for a proxy, since there is no proxy
 - no need for any other software, only java
-- nice logging
 - monitoring via http
